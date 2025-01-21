@@ -1,0 +1,11 @@
+# Ignore all .env files
+*.env
+
+# Ignore node_modules folder
+*.json
+
+# Ignore compiled Python files
+*.pyc
+
+# Ignore specific file
+secret_config.json
