@@ -25,15 +25,11 @@ class CoursespiderSpider(scrapy.Spider):
 
     def parse_course_page(self, response):
         # Extract course metadata
-        company = response.xpath("//div[@class='css-1ujzbfc']//@alt").get(default="N/A")
+        company = response.xpath("//div[@data-e2e='hero-module']//img/@alt").get(default="N/A")
         title = response.xpath("//h1[@data-e2e='hero-title']/text()").get(default="N/A")
-        instructor = response.xpath("//span[@class=' css-4s48ix']/text()").get(default="N/A")
+        instructor = response.xpath("//a[@data-track-component='hero_instructor']//text()").get(default="N/A")
 
-        num_enrolled = "0"  # Default value
-        # Get all the text from the xpath and check if there are enough elements
-        enrollment_text = response.xpath("//div[@class='css-1qi3xup']//text()").getall()
-        if len(enrollment_text) > 1 and enrollment_text[1] == "already enrolled":
-            num_enrolled = enrollment_text[0]
+        num_enrolled = response.xpath("//span[contains(text(), 'already enrolled')]/strong/span/text()").get(default="0")
 
         ratings = response.xpath(
             "//div[contains(@aria-label,'stars')]//text()"
@@ -43,20 +39,29 @@ class CoursespiderSpider(scrapy.Spider):
             "//div[contains(@aria-label,'stars')]/parent::*/following-sibling::p/text()"
         ).get(default="0")
 
-        learners_liked = "0"  # Default value
-
-        # Check if the text "learners liked this course" is present
-        if response.xpath("//div[contains(text(), 'learners liked this course')]"):
-            # Extract the percentage value (e.g., 95%)
-            learners_liked = response.xpath("//span[@class='css-fk6qfz']/text()").get(default="0")
+        learners_liked = response.xpath("//div[contains(text(), 'learners liked this course')]/preceding-sibling::div/div/span/text()").get(default="0")
 
         what_to_learn = response.xpath(
             "//div[@data-track-component='what_you_will_learn_section']//span/text()"
         ).getall()
-        skills_covered = response.css("ul.css-yk0mzy li.css-0 a::text").getall()
+
+        skills_covered = response.css("ul.css-yk0mzy li a::text").getall()
+
         assignment_details = response.xpath(
-            "//div[@class='cds-9 css-k4zccu cds-10']//p[@class=' css-vac8rf']/text()"
-        ).getall()
+            "//div[contains(text(), 'Assessments')]/following-sibling::p[1]/text()").get()
+
+        level_required = response.xpath("//div[@data-e2e='key-information']//div[contains(text(), 'level')]/text()").get(default="N/A")
+
+        language_taught = response.xpath("//div[span[contains(text(), 'Taught in')]]/span/text()").get()
+
+
+        certificate = response.xpath("//div[@class='css-1qfxccv']/text()").get(default="None")
+
+        modules = response.xpath("//div[@data-track-component='syllabus']/div/div/div//h3/text()").getall()
+
+        module_description = response.xpath("//div[@data-track-component='syllabus']/div/div/div//p/text()").getall()
+
+        time_to_complete = response.xpath("//div[@data-track-component='syllabus']//div[@class='css-chglhw']//span/text()").getall()
 
         # Reviews page URL
         review_url = response.url + "/reviews"
@@ -77,6 +82,12 @@ class CoursespiderSpider(scrapy.Spider):
                 "skills_covered": skills_covered,
                 "assignment_details": assignment_details,
                 "course_url": response.url,
+                "level_required": level_required,
+                "language_taught": language_taught,
+                "certificate": certificate,
+                "modules": modules,
+                "module_description": module_description,
+                "time_to_complete": time_to_complete,
                 "about": None,  # "About" will be fetched from the reviews page
                 "reviews": [],  # Collect all reviews across pages
             },
@@ -126,7 +137,6 @@ class CoursespiderSpider(scrapy.Spider):
         else:
             # No more pages, yield the course item
             course_item = CourseItem()
-
             # Assign extracted data to the corresponding fields in the CourseItem
             course_item["title"] = course_metadata["title"]
             course_item["company"] = course_metadata["company"]
@@ -140,6 +150,12 @@ class CoursespiderSpider(scrapy.Spider):
             course_item["assignment_details"] = json.dumps(course_metadata["assignment_details"])
             course_item["about"] = course_metadata["about"]
             course_item["url"] = course_metadata["course_url"]
+            course_item["certificate"] = course_metadata["certificate"]
+            course_item["modules"] = json.dumps(course_metadata["modules"])
+            course_item["modules_desc"] = json.dumps(course_metadata["module_description"])
+            course_item["time_to_complete"] = json.dumps(course_metadata["time_to_complete"])
+            course_item["level_required"] = course_metadata["level_required"]
+            course_item["language_taught"] = course_metadata["language_taught"]
             course_item["learner_review_date"] = json.dumps([
                 review["review_date"] for review in course_metadata["reviews"]
             ])
