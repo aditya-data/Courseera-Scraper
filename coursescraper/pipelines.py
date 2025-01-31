@@ -61,54 +61,62 @@ class CoursescraperPipeline:
         return item
 
     
-import mysql.connector
+import sqlite3
+import json
+import os
 
-class saveToMySQLPipeline:
+class SaveToSQLiteAndJSONPipeline:
     def __init__(self):
-        self.conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="12345678",
-            database="Courses"
-        )
+        # SQLite setup
+        self.json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
+        self.db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
 
+        # SQLite connection setup
+        self.conn = sqlite3.connect(self.db_file_name)  # Creates or connects to SQLite database
         self.cur = self.conn.cursor()
 
-        self.cur.execute("""
-            CREATE TABLE IF NOT EXISTS last_fetch (
-                id INT AUTO_INCREMENT PRIMARY KEY,  -- Use AUTO_INCREMENT for primary key in MySQL
-                title VARCHAR(255) NOT NULL,
-                company VARCHAR(255),
-                instructor VARCHAR(255),
-                num_enrolled INT,
-                ratings FLOAT,
-                num_reviews INT,
-                learners_liked FLOAT,
+        # Ensure that the table name is dynamic based on the input (e.g., spider name)
+        self.table_name = os.environ.get("TABLE_NAME", "courses")  # Default to 'courses' if no table name is provided
+
+        # Create the table dynamically based on the prompt or the provided table name
+        self.cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS {self.table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                company TEXT,
+                instructor TEXT,
+                num_enrolled INTEGER,
+                ratings REAL,
+                num_reviews INTEGER,
+                learners_liked REAL,
                 what_to_learn TEXT,
                 skills_covered TEXT,
-                assignment_details VARCHAR(255),
-                course_url VARCHAR(255),
-                certificate VARCHAR(255),
+                assignment_details TEXT,
+                course_url TEXT,
+                certificate TEXT,
                 modules TEXT,
                 modules_desc TEXT,
                 time_to_complete TEXT,
-                level_required VARCHAR(255),
-                language_taught VARCHAR(255)              
+                level_required TEXT,
+                language_taught TEXT
             );
         """)
 
+        # JSON file setup: Open the JSON file for appending data
+        self.json_file = open(self.json_file_name, "w", encoding="utf-8")
+        self.json_file.write("[")  # Start JSON array
+        self.first_item = True  # To manage commas between JSON objects
+
     def process_item(self, item, spider):
-        # Prepare the SQL INSERT statement
-        insert_query = """
-            INSERT INTO remaining_courses_2 (
+        # Insert the course data into the dynamically-named SQLite database table
+        insert_query = f"""
+            INSERT INTO {self.table_name} (
                 title, company, instructor, num_enrolled, ratings, num_reviews, learners_liked, 
                 what_to_learn, skills_covered, assignment_details, course_url, certificate, modules, 
                 modules_desc, time_to_complete, level_required, language_taught
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
-        
-        # Extract values from the item
         values = (
             item.get('title'),
             item.get('company'),
@@ -117,28 +125,34 @@ class saveToMySQLPipeline:
             item.get('ratings'),
             item.get('num_reviews'),
             item.get('learners_liked'),
-            str(item.get('what_to_learn')),
-            str(item.get('skills_covered')),
+            str(item.get('what_to_learn', "")),
+            str(item.get('skills_covered', "")),
             item.get('assignment_details'),
             item.get('url'),
             item.get('certificate'),
-            str(item.get('modules')),
-            str(item.get('modules_desc')),
-            str(item.get('time_to_complete')),
+            str(item.get('modules', "")),
+            str(item.get('modules_desc', "")),
+            str(item.get('time_to_complete', "")),
             item.get('level_required'),
             item.get('language_taught')
         )
 
-        
-        # Execute the insert query
         self.cur.execute(insert_query, values)
-        
-        # Commit the transaction to save the data
         self.conn.commit()
 
+        # Append the item to the JSON file
+        if not self.first_item:
+            self.json_file.write(",\n")  # Add a comma before the next JSON object
+        self.json_file.write(json.dumps(dict(item), ensure_ascii=False, indent=4))
+        self.first_item = False
+
         return item
-    
+
     def close_spider(self, spider):
+        # Close the SQLite connection
         self.cur.close()
         self.conn.close()
 
+        # Close the JSON array properly
+        self.json_file.write("\n]")  # Close the JSON array
+        self.json_file.close()

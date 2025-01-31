@@ -10,7 +10,9 @@ BOT_NAME = "coursescraper"
 SPIDER_MODULES = ["coursescraper.spiders"]
 NEWSPIDER_MODULE = "coursescraper.spiders"
 
-SCRAPEOPS_API_KEY = os.getenv("SCRAPEOPS_API_KEY")
+# SCRAPEOPS_API_KEY = os.getenv("SCRAPEOPS_API_KEY")
+SCRAPEOPS_API_KEY = "ec9184fb-ff01-4f78-b1c1-c88594374fb3"
+
 SCRAPEOPS_FAKE_USER_AGENT_ENDPOINT = "https://headers.scrapeops.io/v1/user-agents"
 SCRAPEOPS_FAKE_USER_AGENT_ENABLED = True
 SCRAPEOPS_NUM_RESULTS = 50
@@ -45,7 +47,7 @@ FEED_EXPORT_ENCODING = "utf-8"
 
 ITEM_PIPELINES = {
    "coursescraper.pipelines.CoursescraperPipeline": 300,
-   # "coursescraper.pipelines.saveToMySQLPipeline": 400,
+   "coursescraper.pipelines.SaveToSQLiteAndJSONPipeline": 400,
 }
 
 LOG_LEVEL = "INFO"  # Or "WARNING" to reduce log verbosity

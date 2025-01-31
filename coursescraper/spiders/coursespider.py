@@ -1,14 +1,18 @@
 import scrapy
 import json
+import os
 from coursescraper.items import CourseItem
 
 
 class CoursespiderSpider(scrapy.Spider):
     name = "coursespider"
     allowed_domains = ["coursera.org"]
-    start_urls = [
-        "https://www.coursera.org/courses?query=data%20analytics&productTypeDescription=Courses"
-    ]
+        # Get URL and file names from environment variables
+    start_url = os.environ.get("START_URL", "https://www.coursera.org/courses?query=data%20analytics&productTypeDescription=Courses")
+    db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
+    json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
+
+    start_urls = [start_url]
 
     def parse(self, response):
         # Parse courses on the current query page
