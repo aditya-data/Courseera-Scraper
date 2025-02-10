@@ -71,6 +71,7 @@ class SaveToSQLiteAndJSONPipeline:
         self.json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
         self.db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
 
+
         # SQLite connection setup
         self.conn = sqlite3.connect(self.db_file_name)  # Creates or connects to SQLite database
         self.cur = self.conn.cursor()

@@ -7,10 +7,15 @@ from coursescraper.items import CourseItem
 class CoursespiderSpider(scrapy.Spider):
     name = "coursespider"
     allowed_domains = ["coursera.org"]
-        # Get URL and file names from environment variables
+
+    # Enable handling of 404 responses
+    custom_settings = {
+        "HTTPERROR_ALLOWED_CODES": [404],  # Allow processing of 404 errors
+    }
+
+    # Get URL and file names from environment variables
     start_url = os.environ.get("START_URL", "https://www.coursera.org/courses?query=data%20analytics&productTypeDescription=Courses")
-    db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
-    json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
+
 
     start_urls = [start_url]
 
@@ -23,8 +28,8 @@ class CoursespiderSpider(scrapy.Spider):
 
         # Handle pagination for query pages
         next_page = response.xpath("//a[@aria-label='Next Page']//@href").get()
-        url = "https://www.coursera.org" + next_page
         if next_page:
+            url = "https://www.coursera.org" + next_page
             yield response.follow(url, callback=self.parse)
 
     def parse_course_page(self, response):
@@ -57,7 +62,6 @@ class CoursespiderSpider(scrapy.Spider):
         level_required = response.xpath("//div[@data-e2e='key-information']//div[contains(text(), 'level')]/text()").get(default="N/A")
 
         language_taught = response.xpath("//div[span[contains(text(), 'Taught in')]]/span/text()").get()
-
 
         certificate = response.xpath("//div[@class='css-1qfxccv']/text()").get(default="None")
 
@@ -95,11 +99,18 @@ class CoursespiderSpider(scrapy.Spider):
                 "about": None,  # "About" will be fetched from the reviews page
                 "reviews": [],  # Collect all reviews across pages
             },
+            errback=self.handle_404_error,  # Handle errors like 404 explicitly
         )
 
     def parse_reviews(self, response):
         # Retrieve course metadata
         course_metadata = response.meta
+
+        # Handle 404 error case
+        if response.status == 404:
+            self.logger.warning(f"404 encountered for {course_metadata['title']}. Storing collected data. {course_metadata['course_url']}")
+            yield self.create_course_item(course_metadata)
+            return
 
         # Scrape reviews from the current reviews page
         review_elements = response.xpath(
@@ -140,35 +151,36 @@ class CoursespiderSpider(scrapy.Spider):
             )
         else:
             # No more pages, yield the course item
-            course_item = CourseItem()
-            # Assign extracted data to the corresponding fields in the CourseItem
-            course_item["title"] = course_metadata["title"]
-            course_item["company"] = course_metadata["company"]
-            course_item["instructor"] = course_metadata["instructor"]
-            course_item["num_enrolled"] = course_metadata["num_enrolled"]
-            course_item["ratings"] = course_metadata["ratings"]
-            course_item["num_reviews"] = course_metadata["num_reviews"]
-            course_item["learners_liked"] = course_metadata["learners_liked"]
-            course_item["what_to_learn"] = json.dumps(course_metadata["what_to_learn"])
-            course_item["skills_covered"] = json.dumps(course_metadata["skills_covered"])
-            course_item["assignment_details"] = json.dumps(course_metadata["assignment_details"])
-            course_item["about"] = course_metadata["about"]
-            course_item["url"] = course_metadata["course_url"]
-            course_item["certificate"] = course_metadata["certificate"]
-            course_item["modules"] = json.dumps(course_metadata["modules"])
-            course_item["modules_desc"] = json.dumps(course_metadata["module_description"])
-            course_item["time_to_complete"] = json.dumps(course_metadata["time_to_complete"])
-            course_item["level_required"] = course_metadata["level_required"]
-            course_item["language_taught"] = course_metadata["language_taught"]
-            course_item["learner_review_date"] = json.dumps([
-                review["review_date"] for review in course_metadata["reviews"]
-            ])
-            course_item["learner_review_rating"] = json.dumps([
-                review["rating"] for review in course_metadata["reviews"]
-            ])
-            course_item["learner_reviews"] = json.dumps([
-                review["review_text"] for review in course_metadata["reviews"]
-            ])
+            yield self.create_course_item(course_metadata)
 
-            # Yield the course item
-            yield course_item
+    def handle_404_error(self, failure):
+        """Handles 404 errors by yielding course data immediately."""
+        request = failure.request
+        if failure.value.response and failure.value.response.status == 404:
+            self.logger.warning(f"404 encountered: {request.url}")
+            course_metadata = request.meta
+            yield self.create_course_item(course_metadata)
+
+    def create_course_item(self, course_metadata):
+        """Creates and returns a CourseItem from the scraped course metadata."""
+        course_item = CourseItem()
+        course_item["title"] = course_metadata["title"]
+        course_item["company"] = course_metadata["company"]
+        course_item["instructor"] = course_metadata["instructor"]
+        course_item["num_enrolled"] = course_metadata["num_enrolled"]
+        course_item["ratings"] = course_metadata["ratings"]
+        course_item["num_reviews"] = course_metadata["num_reviews"]
+        course_item["learners_liked"] = course_metadata["learners_liked"]
+        course_item["what_to_learn"] = json.dumps(course_metadata["what_to_learn"])
+        course_item["skills_covered"] = json.dumps(course_metadata["skills_covered"])
+        course_item["assignment_details"] = json.dumps(course_metadata["assignment_details"])
+        course_item["about"] = course_metadata["about"]
+        course_item["url"] = course_metadata["course_url"]
+        course_item["certificate"] = course_metadata["certificate"]
+        course_item["modules"] = json.dumps(course_metadata["modules"])
+        course_item["modules_desc"] = json.dumps(course_metadata["module_description"])
+        course_item["time_to_complete"] = json.dumps(course_metadata["time_to_complete"])
+        course_item["level_required"] = course_metadata["level_required"]
+        course_item["language_taught"] = course_metadata["language_taught"]
+        course_item["learner_reviews"] = json.dumps(course_metadata["reviews"])
+        return course_item
