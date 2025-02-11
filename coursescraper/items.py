@@ -24,7 +24,7 @@ class CourseItem(scrapy.Item):
     skills_covered = scrapy.Field()
     about = scrapy.Field()
     assignment_details = scrapy.Field()
-    url = scrapy.Field()
+    course_url = scrapy.Field()
     # learner_review_date = scrapy.Field()
     # learner_review_rating = scrapy.Field()
     learner_reviews = scrapy.Field()

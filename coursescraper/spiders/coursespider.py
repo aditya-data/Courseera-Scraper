@@ -14,7 +14,7 @@ class CoursespiderSpider(scrapy.Spider):
     }
 
     # Get URL and file names from environment variables
-    start_url = os.environ.get("START_URL", "https://www.coursera.org/courses?query=data%20analytics&productTypeDescription=Courses")
+    start_url = os.environ.get("START_URL", "https://www.coursera.org/courses?query=cybersecurity")
 
 
     start_urls = [start_url]
@@ -175,7 +175,7 @@ class CoursespiderSpider(scrapy.Spider):
         course_item["skills_covered"] = json.dumps(course_metadata["skills_covered"])
         course_item["assignment_details"] = json.dumps(course_metadata["assignment_details"])
         course_item["about"] = course_metadata["about"]
-        course_item["url"] = course_metadata["course_url"]
+        course_item["course_url"] = course_metadata["course_url"]
         course_item["certificate"] = course_metadata["certificate"]
         course_item["modules"] = json.dumps(course_metadata["modules"])
         course_item["modules_desc"] = json.dumps(course_metadata["module_description"])

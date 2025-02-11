@@ -68,8 +68,11 @@ import os
 class SaveToSQLiteAndJSONPipeline:
     def __init__(self):
         # SQLite setup
-        self.json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
-        self.db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
+        # self.json_file_name = os.environ.get("JSON_FILE", "/usr/src/app/data/courses.json")
+        # self.db_file_name = os.environ.get("DB_FILE", "/usr/src/app/data/courses.db")
+
+        self.json_file_name = os.environ.get("JSON_FILE", "courses.json")
+        self.db_file_name = os.environ.get("DB_FILE", "courses.db")
 
 
         # SQLite connection setup
@@ -116,7 +119,7 @@ class SaveToSQLiteAndJSONPipeline:
                 title, company, instructor, num_enrolled, ratings, num_reviews, learners_liked, 
                 what_to_learn, skills_covered, assignment_details, course_url, certificate, modules, 
                 modules_desc, time_to_complete, level_required, language_taught, about
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         values = (
@@ -130,7 +133,7 @@ class SaveToSQLiteAndJSONPipeline:
             str(item.get('what_to_learn', "")),
             str(item.get('skills_covered', "")),
             item.get('assignment_details'),
-            item.get('url'),
+            item.get('course_url'),
             item.get('certificate'),
             str(item.get('modules', "")),
             str(item.get('modules_desc', "")),
