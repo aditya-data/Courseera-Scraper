@@ -99,7 +99,8 @@ class SaveToSQLiteAndJSONPipeline:
                 modules_desc TEXT,
                 time_to_complete TEXT,
                 level_required TEXT,
-                language_taught TEXT
+                language_taught TEXT,
+                about TEXT
             );
         """)
 
@@ -114,7 +115,7 @@ class SaveToSQLiteAndJSONPipeline:
             INSERT INTO {self.table_name} (
                 title, company, instructor, num_enrolled, ratings, num_reviews, learners_liked, 
                 what_to_learn, skills_covered, assignment_details, course_url, certificate, modules, 
-                modules_desc, time_to_complete, level_required, language_taught
+                modules_desc, time_to_complete, level_required, language_taught, about
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
@@ -135,7 +136,8 @@ class SaveToSQLiteAndJSONPipeline:
             str(item.get('modules_desc', "")),
             str(item.get('time_to_complete', "")),
             item.get('level_required'),
-            item.get('language_taught')
+            item.get('language_taught'),
+            item.get("about")
         )
 
         self.cur.execute(insert_query, values)
